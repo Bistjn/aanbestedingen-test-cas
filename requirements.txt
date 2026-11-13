@@ -1,0 +1,4 @@
+# Alleen nodig voor de AI-matching (matching.py). CPU-versie van PyTorch: kleiner en sneller te installeren.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers

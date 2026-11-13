@@ -1,0 +1,17 @@
+{
+  "id": "zorginstellingen",
+  "naam": "Opdrachten van zorginstellingen",
+  "soort": "opdrachtgever",
+  "toelichting": "Toont alle opdrachten die uitgeschreven worden door zorginstellingen (ziekenhuizen, woonzorgcentra, GGZ, revalidatie, thuiszorg), ongeacht het onderwerp. De score hangt af van hoe zeker het is dat de opdrachtgever een zorginstelling is.",
+  "zeker": [
+    "ziekenhuis", "ziekenhuizen", "ziekenhuisnetwerk", "hospitaal", "hospital", "hôpital", "hopital", "hospitalier",
+    "universitair ziekenhuis", "algemeen ziekenhuis", "medisch centrum", "medical center", "umc",
+    "kliniek", "clinique", "clinic", "centre hospitalier", "chu", "chr", "chirec", "uz", "az",
+    "woonzorgcentrum", "woonzorg", "wzc", "rusthuis", "verpleeghuis", "verpleegtehuis", "maison de repos", "mrs", "mrpa",
+    "psychiatrisch", "psychiatrie", "psychiatrique", "ggz", "geestelijke gezondheidszorg", "santé mentale",
+    "revalidatie", "revalidatiecentrum", "revalidation", "réadaptation",
+    "zorggroep", "zorgcentrum", "zorginstelling", "zorgorganisatie", "thuiszorg", "wijkverpleging", "gehandicaptenzorg"
+  ],
+  "mogelijk": ["zorg", "soins", "santé", "gezondheid", "care", "ocmw", "cpas", "welzijn"],
+  "uitzonderingen": ["agentschap zorg", "zorginstituut", "ministerie", "fod volksgezondheid", "spf santé", "federale overheidsdienst", "service public", "zorgverzekeraar", "nederlandse zorgautoriteit"]
+}

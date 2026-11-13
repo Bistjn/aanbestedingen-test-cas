@@ -1,0 +1,270 @@
+{
+  "id": "iqvia",
+  "naam": "IQVIA",
+  "soort": "inhoud",
+  "toelichting": "Directe match: opdrachten waarop IQVIA zelf kan inschrijven (gezondheidsdata, real-world evidence, analytics en BI voor ziekenhuizen en overheden, klinisch onderzoek, farmacovigilantie, marktdata en zorgconsultancy). Mogelijks interessant voor klant: opdrachten voor de klanten van IQVIA (farma, medtech, biotech, diagnostica), zoals levering van geneesmiddelen, vaccins en medische hulpmiddelen.",
+  "facetten": [
+    {
+      "label": "Gezondheidsdata en real-world evidence",
+      "teksten": [
+        "Aankoop van of toegang tot gezondheidsgegevens, real-world data en real-world evidence voor onderzoek naar geneesmiddelen en zorggebruik",
+        "Acquisition de données de santé et de données en vie réelle (real-world data) pour l'analyse de l'utilisation des médicaments",
+        "Real-world data and real-world evidence studies, health data access and observational research on medicines"
+      ]
+    },
+    {
+      "label": "Data-analyse en datawarehouse voor ziekenhuizen",
+      "teksten": [
+        "Datawarehouse, business intelligence en rapportering van klinische en administratieve ziekenhuisgegevens, kwaliteitsindicatoren en managementinformatie voor een ziekenhuis",
+        "Entrepôt de données cliniques et business intelligence pour un hôpital, tableaux de bord et indicateurs de qualité",
+        "Clinical data warehouse and business intelligence platform for hospitals, quality indicators and performance dashboards"
+      ]
+    },
+    {
+      "label": "Data en analytics voor overheid en volksgezondheid",
+      "teksten": [
+        "Data-analyse, statistiek en dataplatform voor een gezondheidsagentschap of ministerie van volksgezondheid, monitoring van geneesmiddelengebruik en volksgezondheid",
+        "Analyse de données et plateforme de données pour la santé publique et le suivi de la consommation de médicaments",
+        "Health data platform, analytics and data management services for a public health authority or medicines agency"
+      ]
+    },
+    {
+      "label": "Klinisch onderzoek en studies",
+      "teksten": [
+        "Uitvoeren of ondersteunen van klinische studies, klinisch onderzoek, patiëntenregisters en observationele studies",
+        "Réalisation d'essais cliniques, de registres de patients et d'études observationnelles",
+        "Clinical trial services, contract research, patient registries and epidemiological studies"
+      ]
+    },
+    {
+      "label": "Farmacovigilantie en medische informatie",
+      "teksten": [
+        "Geneesmiddelenbewaking (farmacovigilantie), melding en analyse van bijwerkingen, regulatory affairs en medische informatie over geneesmiddelen",
+        "Pharmacovigilance, gestion des effets indésirables des médicaments et information médicale",
+        "Pharmacovigilance, adverse event processing, regulatory and medical information services"
+      ]
+    },
+    {
+      "label": "Marktonderzoek, health economics en zorgconsultancy",
+      "teksten": [
+        "Marktonderzoek en marktgegevens over geneesmiddelen en apotheken, gezondheidseconomische evaluatie, HTA, prijszetting en terugbetaling",
+        "Études de marché pharmaceutique, évaluation médico-économique, évaluation des technologies de la santé",
+        "Pharmaceutical market data, health economics and outcomes research, health technology assessment and healthcare consulting"
+      ]
+    }
+  ],
+  "valse_vrienden": [
+    "Bouw, renovatie of onderhoud van een ziekenhuis of zorggebouw",
+    "Schoonmaak, catering, linnen of beveiliging in een zorginstelling",
+    "Verzekeringen voor een zorginstelling of gemeente",
+    "Ter beschikking stellen van verpleegkundigen of zorgpersoneel via uitzendarbeid",
+    "Levering van kantoormeubilair, voertuigen of energie",
+    "Travaux de construction, nettoyage ou restauration dans un hôpital"
+  ],
+  "trefwoorden": [
+    {
+      "woorden": [
+        "real world data",
+        "real-world data",
+        "real world evidence",
+        "real-world evidence",
+        "rwe",
+        "rwd",
+        "données en vie réelle"
+      ],
+      "gewicht": 1.0
+    },
+    {
+      "woorden": [
+        "gezondheidsgegevens",
+        "gezondheidsdata",
+        "zorgdata",
+        "données de santé",
+        "health data",
+        "patiëntgegevens"
+      ],
+      "gewicht": 0.9
+    },
+    {
+      "woorden": [
+        "farmacovigilantie",
+        "geneesmiddelenbewaking",
+        "pharmacovigilance",
+        "bijwerkingen",
+        "effets indésirables"
+      ],
+      "gewicht": 1.0
+    },
+    {
+      "woorden": [
+        "klinische studie",
+        "klinisch onderzoek",
+        "clinical trial",
+        "essai clinique",
+        "essais cliniques",
+        "patiëntenregister",
+        "registre"
+      ],
+      "gewicht": 0.8
+    },
+    {
+      "woorden": [
+        "datawarehouse",
+        "data warehouse",
+        "entrepôt de données",
+        "business intelligence",
+        "dataplatform",
+        "data-analyse",
+        "analyse de données",
+        "dashboards",
+        "rapportering"
+      ],
+      "gewicht": 0.6
+    },
+    {
+      "woorden": [
+        "geneesmiddelengebruik",
+        "geneesmiddelenverbruik",
+        "consommation de médicaments",
+        "voorschrijfgedrag",
+        "marktgegevens",
+        "marktonderzoek",
+        "étude de marché"
+      ],
+      "gewicht": 0.8
+    },
+    {
+      "woorden": [
+        "gezondheidseconom",
+        "health economics",
+        "médico-économique",
+        "hta",
+        "health technology assessment",
+        "kosteneffectiviteit"
+      ],
+      "gewicht": 0.8
+    }
+  ],
+  "cpv_groepen": [
+    "7230",
+    "7231",
+    "7232",
+    "7222",
+    "7226",
+    "4818",
+    "731",
+    "7931",
+    "7941"
+  ],
+  "klant": {
+    "label": "Mogelijks interessant voor klant",
+    "facetten": [
+      {
+        "label": "Geneesmiddelen en vaccins",
+        "teksten": [
+          "Levering van geneesmiddelen, specialiteiten, biosimilars en farmaceutische producten aan een ziekenhuisapotheek",
+          "Aankoop van vaccins, oncologische geneesmiddelen of zeldzame-ziektegeneesmiddelen",
+          "Fourniture de médicaments, de spécialités pharmaceutiques et de vaccins pour un hôpital",
+          "Supply of pharmaceuticals, medicines, biologics and vaccines"
+        ]
+      },
+      {
+        "label": "Medische hulpmiddelen en apparatuur",
+        "teksten": [
+          "Levering van medische hulpmiddelen, implantaten, katheters, stents en medisch verbruiksmateriaal",
+          "Aankoop van medische apparatuur zoals beeldvorming, monitoring, infuuspompen of chirurgische instrumenten",
+          "Fourniture de dispositifs médicaux, d'implants et de matériel médical",
+          "Supply of medical devices, implants and medical equipment"
+        ]
+      },
+      {
+        "label": "Diagnostica en laboratorium",
+        "teksten": [
+          "Reagentia, in-vitrodiagnostica, analysetoestellen en laboratoriumbenodigdheden voor een klinisch labo",
+          "Réactifs et diagnostic in vitro pour un laboratoire de biologie clinique",
+          "In vitro diagnostics, reagents and laboratory analysers for clinical laboratories"
+        ]
+      },
+      {
+        "label": "Medische voeding en consumer health",
+        "teksten": [
+          "Levering van klinische voeding, sondevoeding, dieetvoeding en verzorgingsproducten voor patiënten",
+          "Nutrition clinique et produits de soins pour patients"
+        ]
+      }
+    ],
+    "trefwoorden": [
+      {
+        "woorden": [
+          "geneesmiddelen",
+          "geneesmiddel",
+          "farmaceutische",
+          "specialiteiten",
+          "biosimilar",
+          "vaccin",
+          "vaccins",
+          "médicaments",
+          "médicament",
+          "pharmaceutique",
+          "pharmaceuticals",
+          "medicines"
+        ],
+        "gewicht": 1.0
+      },
+      {
+        "woorden": [
+          "medische hulpmiddelen",
+          "medisch hulpmiddel",
+          "implantaten",
+          "implantaat",
+          "stents",
+          "katheters",
+          "dispositifs médicaux",
+          "dispositif médical",
+          "implants",
+          "medical devices"
+        ],
+        "gewicht": 1.0
+      },
+      {
+        "woorden": [
+          "medische apparatuur",
+          "medische toestellen",
+          "matériel médical",
+          "équipement médical",
+          "medical equipment",
+          "infuuspompen",
+          "beeldvorming",
+          "imagerie médicale"
+        ],
+        "gewicht": 0.8
+      },
+      {
+        "woorden": [
+          "reagentia",
+          "reagens",
+          "diagnostica",
+          "in-vitro",
+          "in vitro",
+          "réactifs",
+          "diagnostic",
+          "laboratoriumbenodigdheden"
+        ],
+        "gewicht": 0.8
+      },
+      {
+        "woorden": [
+          "ziekenhuisapotheek",
+          "pharmacie hospitalière",
+          "klinische voeding",
+          "sondevoeding",
+          "nutrition clinique"
+        ],
+        "gewicht": 0.7
+      }
+    ],
+    "cpv_groepen": [
+      "33"
+    ]
+  }
+}

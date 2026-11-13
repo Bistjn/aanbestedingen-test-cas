@@ -6,6 +6,10 @@ on:
       dagen_terug:
         description: "Publicaties van de laatste X dagen ophalen"
         default: "1"
+      alleen_matching:
+        description: "Alleen de matchscores opnieuw berekenen (geen nieuwe publicaties ophalen)"
+        type: boolean
+        default: false
   schedule:
     # Elke dag om 05:47 UTC (= 06:47 in België in de winter, 07:47 in de zomer)
     - cron: "47 5 * * *"
@@ -25,7 +29,7 @@ env:
 jobs:
   ophalen:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@v4
@@ -34,29 +38,46 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: AI-taalmodel installeren (voor de matchscores)
+        run: pip install -r requirements.txt
+
+      - name: AI-taalmodel uit de cache halen
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-multilingual-e5-small-v1
 
       - name: Gegevens van vorige dagen ophalen (van de live pagina)
         run: |
           mkdir -p data
-          if curl -fsSL "$SITE_URL/data/aanbestedingen.json" -o data/aanbestedingen.json; then
-            echo "Eerdere gegevens opgehaald."
-          else
-            echo "Nog geen eerdere gegevens (eerste run?). We beginnen opnieuw."
-            rm -f data/aanbestedingen.json
-          fi
+          for bestand in aanbestedingen.json; do
+            if curl -fsSL "$SITE_URL/data/$bestand" -o "data/$bestand"; then
+              echo "Eerdere gegevens opgehaald: $bestand"
+            else
+              echo "Nog geen eerdere $bestand (eerste keer?)."
+              rm -f "data/$bestand"
+            fi
+          done
 
       - name: TenderNed (Nederland)
         id: tenderned
+        if: ${{ !inputs.alleen_matching }}
         continue-on-error: true   # een fout bij TenderNed mag TED niet tegenhouden
         env:
           TENDERNED_DAGEN_TERUG: ${{ github.event.inputs.dagen_terug || '1' }}
+          TENDERNED_MAX: "1200"
         run: python tenderned.py
 
       - name: TED (Europa - Belgie en Nederland)
         id: ted
+        if: ${{ !inputs.alleen_matching }}
         continue-on-error: true
         env:
           TED_DAGEN_TERUG: ${{ github.event.inputs.dagen_terug || '1' }}
+          TED_MAX: "3000"
         run: python ted.py
 
       - name: Overzicht maken

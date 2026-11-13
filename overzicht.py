@@ -13,6 +13,8 @@ TED publication-number. Die twee worden samengevoegd tot één regel.
 
 import html
 import json
+
+import matching
 import logging
 import os
 import sys
@@ -156,11 +158,28 @@ def van_ted(item):
     }
 
 
+def volledig(r):
+    """Vul ontbrekende velden aan, zodat oudere of onvolledige gegevens niet crashen."""
+    standaard = {"bronnen": [], "ted_nummer": "", "titel": "", "opdrachtgever": "", "land": "",
+                 "provincies": [], "nuts": [], "fase": "", "fase_groep": "Overig", "type": "",
+                 "procedure": "", "publicatiedatum": "", "deadline": "", "cpv": [], "cpv_hoofd": "",
+                 "omschrijving": ""}
+    for k, v in standaard.items():
+        if not isinstance(r.get(k), type(v)):
+            r[k] = v
+    links = r.get("links") if isinstance(r.get("links"), dict) else {}
+    for k in ("pagina", "pdf", "zip", "extern", "ted"):
+        links[k] = links.get(k) or ""
+    links["documenten"] = links.get("documenten") if isinstance(links.get("documenten"), list) else []
+    r["links"] = links
+    return r
+
+
 def samenvoegen(records):
     """Ontdubbel op id, en voeg TenderNed + TED samen via het TED-nummer."""
     per_id = {}
     for r in records:
-        per_id[r["id"]] = r  # nieuwere versie van dezelfde publicatie wint
+        per_id[r["id"]] = volledig(r)  # nieuwere versie van dezelfde publicatie wint
     tn_per_ted = {r["ted_nummer"]: r for r in per_id.values()
                   if "TenderNed" in r["bronnen"] and r["ted_nummer"]}
     resultaat, samengevoegd = [], 0
@@ -204,11 +223,17 @@ main{padding:0 24px 40px;display:grid;gap:10px}
 .links a{font-size:13px;margin-right:12px;color:var(--accent)}
 details summary{cursor:pointer;font-size:13px;color:var(--accent)}details div{font-size:13px;margin-top:4px;word-break:break-all}
 button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--lijn);background:#fff;cursor:pointer}
+.label.match{background:#1f5eff;color:#fff}.label.klant{background:#7a3db8;color:#fff}.waarom{font-size:13px;color:var(--zacht)}
+.profiel{margin:0 24px 10px;padding:10px 14px;background:#fff;border:1px dashed var(--lijn);border-radius:10px;font-size:13px;color:var(--zacht)}
+.profiel b{color:var(--tekst)}.chip{display:inline-block;background:#eef1f6;border-radius:99px;padding:0 8px;margin:2px 3px 0 0;color:var(--tekst)}
 .leeg{padding:40px;text-align:center;color:var(--zacht)}
 </style></head><body>
 <header><h1>Aanbestedingen België &amp; Nederland</h1>
 <p>Bronnen: TenderNed en TED · bijgewerkt __BIJGEWERKT__ · __AANTAL__ aanbestedingen</p></header>
 <div class="filters">
+ <label>Zoekprofiel<select id="f-profiel"><option value="">Geen (alles tonen)</option></select></label>
+ <label id="l-soort" hidden>Soort match<select id="f-soort"><option value="">Alles</option><option value="direct">Directe match</option><option value="klant">Mogelijks interessant voor klant</option></select></label>
+ <label>Minimale match<select id="f-min"><option value="40">40% of meer</option><option value="60">60% of meer</option><option value="80">80% of meer</option><option value="0">Alles (met score)</option></select></label>
  <label>Zoeken<input id="f-tekst" type="search" placeholder="titel, opdrachtgever, omschrijving"></label>
  <label>Land<select id="f-land"><option value="">Alle</option><option value="BE">België</option><option value="NL">Nederland</option></select></label>
  <label>Provincie<select id="f-prov"><option value="">Alle</option></select></label>
@@ -219,37 +244,64 @@ button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  <label class="check"><input id="f-open" type="checkbox"> Alleen nog open voor inschrijving</label>
 </div>
 <div class="balk"><span id="teller"></span>
- <label>Sorteren <select id="f-sort"><option value="pub">Nieuwste eerst</option><option value="deadline">Deadline eerst</option></select></label></div>
+ <label>Sorteren <select id="f-sort"><option value="pub">Nieuwste eerst</option><option value="match">Beste match</option><option value="deadline">Deadline eerst</option></select></label></div>
+<div id="profiel" class="profiel" hidden></div>
 <main id="lijst"></main>
 <div style="text-align:center;padding-bottom:40px"><button id="meer" hidden>Toon meer</button></div>
 <script id="data" type="application/json">__DATA__</script>
+<script id="profielen" type="application/json">__PROFIELEN__</script>
 <script>
 const DATA = JSON.parse(document.getElementById('data').textContent);
 const VANDAAG = new Date().toISOString().slice(0,10);
 const $ = id => document.getElementById(id);
+const PROFIELEN = JSON.parse(document.getElementById('profielen').textContent);
 let toon = 100;
+PROFIELEN.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.naam;$('f-profiel').appendChild(o);});
 function vul(id, waarden){ const s=$(id); [...new Set(waarden)].filter(Boolean).sort().forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v;s.appendChild(o);}); }
 vul('f-prov', DATA.flatMap(r=>r.provincies)); vul('f-fase', DATA.map(r=>r.fase_groep)); vul('f-type', DATA.map(r=>r.type));
 function esc(t){ return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function dagenTot(d){ return Math.round((new Date(d)-new Date(VANDAAG))/864e5); }
+function profiel(){ return PROFIELEN.find(x=>x.id===$('f-profiel').value) || null; }
+function toonProfiel(p){
+  const el=$('profiel');
+  if(!p){ el.hidden=true; return; }
+  el.hidden=false;
+  el.innerHTML = `<b>${esc(p.naam)}</b> · ${esc(p.toelichting)}<br>De matchscore (0–100%) wordt elke dag berekend`
+    + (p.soort==='inhoud' ? ' door een AI-taalmodel dat titel en volledige omschrijving inhoudelijk vergelijkt (ook in het Frans en Engels), aangevuld met vaktermen en CPV-codes.' : ' op basis van de naam van de opdrachtgever.');
+}
 function gefilterd(){
   const tekst=$('f-tekst').value.toLowerCase().trim(), land=$('f-land').value, prov=$('f-prov').value, fase=$('f-fase').value,
         type=$('f-type').value, cpv=$('f-cpv').value.replace(/\D/g,''), dagen=$('f-dagen').value, open=$('f-open').checked;
   const grens = dagen ? new Date(Date.now()-dagen*864e5).toISOString().slice(0,10) : '';
+  const p = profiel(); toonProfiel(p); const min = Number($('f-min').value);
   let r = DATA.filter(a => (!land||a.land===land) && (!prov||a.provincies.includes(prov)) && (!fase||a.fase_groep===fase)
     && (!type||a.type===type) && (!cpv||a.cpv.some(c=>c.startsWith(cpv))) && (!grens||a.publicatiedatum>=grens)
     && (!open||(a.deadline&&a.deadline>=VANDAAG))
     && (!tekst||(a.titel+' '+a.opdrachtgever+' '+a.omschrijving).toLowerCase().includes(tekst)));
-  if ($('f-sort').value==='deadline') r.sort((a,b)=>(a.deadline&&a.deadline>=VANDAAG?a.deadline:'9')<(b.deadline&&b.deadline>=VANDAAG?b.deadline:'9')?-1:1);
+  if (p){
+    const soort=$('f-soort').value;
+    r.forEach(a=>{
+      const m=(a.matches||{})[p.id]||{score:0,redenen:[]}, d=m.score||0, k=m.klant_score||0;
+      // Directe match gaat voor; anders klantopdracht; zo krijgt elke opdracht één label
+      if (soort!=='klant' && d>=Math.max(min,1)) { a._soort='direct'; a._score=d; a._redenen=m.redenen||[]; }
+      else if (soort!=='direct' && p.klant && k>=Math.max(min,1)) { a._soort='klant'; a._score=k; a._redenen=m.klant_redenen||[]; }
+      else { a._soort=''; a._score=0; a._redenen=[]; }
+    });
+    r=r.filter(a=>a._soort);
+  }
+  if ($('f-sort').value==='match' && p) r.sort((a,b)=>b._score-a._score);
+  else if ($('f-sort').value==='deadline') r.sort((a,b)=>(a.deadline&&a.deadline>=VANDAAG?a.deadline:'9')<(b.deadline&&b.deadline>=VANDAAG?b.deadline:'9')?-1:1);
   else r.sort((a,b)=>a.publicatiedatum<b.publicatiedatum?1:-1);
   return r;
 }
+let MATCH = false;
 function kaart(a){
   const d = a.deadline ? dagenTot(a.deadline) : null;
   const dl = a.deadline ? `<span>Deadline: <b>${esc(a.deadline)}</b>${d>=0&&d<=7?' <span class="label kort">nog '+d+' d</span>':''}${d<0?' (verstreken)':''}</span>` : '';
   const docs = a.links.documenten||[];
   return `<article class="kaart">
    <div>${a.bronnen.map(b=>`<span class="label bron">${esc(b)}</span>`).join('')}<span class="label ${a.fase_groep==='Aankondiging'?'open':''}">${esc(a.fase||a.fase_groep)}</span>${a.type?`<span class="label">${esc(a.type)}</span>`:''}</div>
+   ${MATCH?`<div class="waarom"><span class="label ${a._soort==='klant'?'klant':'match'}">${a._soort==='klant'?'Mogelijks interessant voor klant · ':'Match '}${a._score}%</span> waarom: ${esc(a._redenen.join(', '))}</div>`:''}
    <h2><a href="${esc(a.links.pagina)}" target="_blank" rel="noopener">${esc(a.titel||'(zonder titel)')}</a></h2>
    <div class="meta"><span>${esc(a.opdrachtgever)}</span><span>${a.land==='BE'?'België':a.land==='NL'?'Nederland':''}${a.provincies.length?' · '+esc(a.provincies.join(', ')):''}</span><span>Gepubliceerd: ${esc(a.publicatiedatum)}</span>${dl}</div>
    ${a.cpv.length?`<div class="meta">CPV: ${esc(a.cpv.slice(0,6).join(', '))}${a.cpv.length>6?' …':''}</div>`:''}
@@ -259,11 +311,12 @@ function kaart(a){
   </article>`;
 }
 function teken(){
-  const r = gefilterd();
+  const r = gefilterd(); MATCH = !!profiel();
   $('teller').textContent = `${r.length} van ${DATA.length} aanbestedingen`;
   $('lijst').innerHTML = r.length ? r.slice(0,toon).map(kaart).join('') : '<div class="leeg">Geen aanbestedingen voor deze filters.</div>';
   $('meer').hidden = r.length <= toon;
 }
+$('f-profiel').addEventListener('change',()=>{ const p=profiel(); $('f-sort').value = p ? 'match' : 'pub'; $('l-soort').hidden = !(p&&p.klant); if(!(p&&p.klant)) $('f-soort').value=''; });
 document.querySelectorAll('.filters input, .filters select, #f-sort').forEach(e=>e.addEventListener('input',()=>{toon=100;teken();}));
 $('meer').addEventListener('click',()=>{toon+=100;teken();});
 teken();
@@ -290,12 +343,23 @@ def main():
         log.error("Geen enkele aanbesteding om te tonen.")
         return 1
 
+    profielen = matching.lees_profielen()
+    log.info("Zoekprofielen: %s", ", ".join(p["naam"] for p in profielen) or "geen")
+    matching.bereken(alles, profielen)
+
     os.makedirs("data", exist_ok=True)
     with open(DATA_BESTAND, "w", encoding="utf-8") as f:
         json.dump(alles, f, ensure_ascii=False, indent=1)
 
-    data_json = json.dumps(alles, ensure_ascii=False).replace("</", "<\\/")
+    # De pagina krijgt geen ruwe AI-gegevens (_sim), alleen de scores
+    pagina_data = [{k: v for k, v in r.items() if k != "_sim"} for r in alles]
+    data_json = json.dumps(pagina_data, ensure_ascii=False).replace("</", "<\\/")
+    profiel_info = [{"id": p["id"], "naam": p["naam"], "soort": p["soort"], "toelichting": p.get("toelichting", ""),
+                     "klant": bool(p.get("klant"))} for p in profielen]
+    profielen_json = json.dumps(profiel_info, ensure_ascii=False).replace("</", "<\\/")
     pagina = (PAGINA.replace("__DATA__", data_json)
+                    .replace("__PROFIELEN__", profielen_json)
+                    .replace("__DREMPEL__", str(matching.DREMPEL))
                     .replace("__BIJGEWERKT__", html.escape(date.today().strftime("%d-%m-%Y")))
                     .replace("__AANTAL__", str(len(alles))))
     with open(HTML_BESTAND, "w", encoding="utf-8") as f:
