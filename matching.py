@@ -41,7 +41,7 @@ log = logging.getLogger("matching")
 
 MODEL_NAAM = os.environ.get("MATCH_MODEL", "intfloat/multilingual-e5-small")
 DREMPEL = 40           # vanaf deze score toont de pagina een opdracht
-SPREIDING = 0.10       # gelijkenis boven de mediaan die als "volledig passend" telt
+TOP_PERCENTIEL = 0.99  # gelijkenis op dit percentiel (top 1%) telt als "volledig passend"
 GEWICHT_BETEKENIS, GEWICHT_TREFWOORD, GEWICHT_CPV = 0.60, 0.25, 0.15
 
 
@@ -148,13 +148,29 @@ def betekenis_berekenen(aanbestedingen, sleutel, facetten, negatief):
     return True
 
 
-def onderdeel_scoren(aanbestedingen, sleutel, facetten, negatief, trefwoorden, cpv_groepen):
+def heeft_context(a, context):
+    """Gaat de opdracht over zorg? (tekst, opdrachtgever of CPV)"""
+    if not context:
+        return True
+    tekst = normaliseer(f"{a.get('titel', '')} {a.get('omschrijving', '')} {a.get('opdrachtgever', '')}")
+    if any(bevat(tekst, w) for w in context.get("woorden", [])):
+        return True
+    return any(str(c).startswith(g) for g in context.get("cpv_groepen", []) for c in a.get("cpv", []))
+
+
+def onderdeel_scoren(aanbestedingen, sleutel, facetten, negatief, trefwoorden, cpv_groepen, context=None):
     """Score 0-100 voor één onderdeel (directe match of klant). Geeft {id: (score, redenen)}."""
     met_betekenis = betekenis_berekenen(aanbestedingen, sleutel, facetten, negatief)
-    mediaan = None
+    mediaan = top = None
     if met_betekenis:
-        alle = [a["_sim"][sleutel][0] for a in aanbestedingen if sleutel in a.get("_sim", {})]
-        mediaan = statistics.median(alle) if alle else None
+        alle = sorted(a["_sim"][sleutel][0] for a in aanbestedingen if sleutel in a.get("_sim", {}))
+        if alle:
+            # Relatieve schaal: de mediaan is de "typische" niet-passende opdracht,
+            # het 99e percentiel telt als volledig passend.
+            mediaan = statistics.median(alle)
+            top = alle[min(len(alle) - 1, int(TOP_PERCENTIEL * len(alle)))]
+            log.info("[%s] gelijkenis: mediaan %.3f, 99e percentiel %.3f, hoogste %.3f",
+                     sleutel, mediaan, top, alle[-1])
     gewichten = (GEWICHT_BETEKENIS, GEWICHT_TREFWOORD, GEWICHT_CPV) if mediaan is not None \
         else (0.0, 0.65, 0.35)  # zonder taalmodel: alleen trefwoorden en CPV
 
@@ -165,7 +181,7 @@ def onderdeel_scoren(aanbestedingen, sleutel, facetten, negatief, trefwoorden, c
         b = 0.0
         if mediaan is not None:
             pos, neg, label = a["_sim"][sleutel]
-            b = max(0.0, min(1.0, (pos - mediaan) / SPREIDING))
+            b = max(0.0, min(1.0, (pos - mediaan) / max(top - mediaan, 0.01)))
             if neg > pos:
                 b *= 0.5   # lijkt meer op iets anders (valse vriend of het andere onderdeel)
             if b >= 0.5:
@@ -191,8 +207,12 @@ def onderdeel_scoren(aanbestedingen, sleutel, facetten, negatief, trefwoorden, c
         c = 1.0 if treffer else 0.0
         if treffer:
             redenen.append(f"CPV {treffer}…")
-        totaal = round(100 * (gewichten[0] * b + gewichten[1] * t + gewichten[2] * c))
-        resultaat[a["id"]] = (int(totaal), redenen)
+        totaal = 100 * (gewichten[0] * b + gewichten[1] * t + gewichten[2] * c)
+        if not heeft_context(a, context):
+            totaal *= 0.5
+            if totaal >= 15:
+                redenen.append("geen zorgcontext (score gehalveerd)")
+        resultaat[a["id"]] = (int(round(totaal)), redenen)
     return resultaat
 
 
@@ -206,7 +226,8 @@ def score_inhoud(aanbestedingen, profiel):
     # Directe match: wat lijkt op een klantopdracht of valse vriend telt niet als direct
     direct = onderdeel_scoren(aanbestedingen, f"{profiel['id']}:direct:{versie}",
                               profiel.get("facetten"), valse + klant_teksten,
-                              profiel.get("trefwoorden"), profiel.get("cpv_groepen"))
+                              profiel.get("trefwoorden"), profiel.get("cpv_groepen"),
+                              profiel.get("zorgcontext"))
     # Klantopdracht: wat lijkt op een directe match of valse vriend telt niet als klant
     voor_klant = onderdeel_scoren(aanbestedingen, f"{profiel['id']}:klant:{versie}",
                                   klant.get("facetten"), valse + direct_teksten,
