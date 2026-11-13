@@ -1,16 +1,22 @@
-name: Test TenderNed
+name: Aanbestedingen ophalen
 
 on:
   workflow_dispatch:
     inputs:
       aantal:
-        description: "Aantal publicaties (1-100)"
+        description: "TenderNed: aantal publicaties (1-100)"
         default: "10"
+      dagen_terug:
+        description: "TED: publicaties van de laatste X dagen"
+        default: "1"
+  schedule:
+    # Elke dag om 05:47 UTC (= 06:47 in België in de winter, 07:47 in de zomer)
+    - cron: "47 5 * * *"
 
 jobs:
   ophalen:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -20,18 +26,33 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Aanbestedingen ophalen
+      - name: TenderNed (Nederland)
+        id: tenderned
+        continue-on-error: true   # een fout bij TenderNed mag TED niet tegenhouden
         env:
           AANTAL_PUBLICATIES: ${{ github.event.inputs.aantal || '10' }}
         run: python tenderned.py
 
+      - name: TED (Europa - Belgie en Nederland)
+        id: ted
+        continue-on-error: true
+        env:
+          TED_DAGEN_TERUG: ${{ github.event.inputs.dagen_terug || '1' }}
+        run: python ted.py
+
       - name: Resultaten beschikbaar maken
-        if: always()   # ook uploaden als het script faalt, zodat je de log kunt bekijken
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aanbestedingen-nederland
+          name: aanbestedingen-${{ github.run_number }}
           path: |
-            aanbestedingen_nederland.csv
-            aanbestedingen_nederland.json
-            tenderned.log
+            *.csv
+            *.json
+            *.log
           if-no-files-found: warn
+
+      - name: Run als mislukt markeren als een bron faalde
+        if: steps.tenderned.outcome == 'failure' || steps.ted.outcome == 'failure'
+        run: |
+          echo "TenderNed: ${{ steps.tenderned.outcome }} | TED: ${{ steps.ted.outcome }}"
+          exit 1
