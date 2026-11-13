@@ -23,6 +23,7 @@ import logging
 import os
 import sys
 import time
+from datetime import date, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -32,7 +33,13 @@ from urllib.request import Request, urlopen
 SITE = "https://www.tenderned.nl"
 API = f"{SITE}/papi/tenderned-rs-tns/v2"
 
-AANTAL = int(os.environ.get("AANTAL_PUBLICATIES", "10"))  # max 100 per pagina
+# Standaard: alle publicaties van de laatste DAGEN_TERUG dagen (de lijst is
+# gesorteerd van nieuw naar oud; gecontroleerd op 13-11-2026, ±100 per dag).
+# Zet AANTAL_PUBLICATIES om in plaats daarvan een vast aantal op te halen.
+DAGEN_TERUG = int(os.environ.get("TENDERNED_DAGEN_TERUG", "1"))
+AANTAL = int(os.environ.get("AANTAL_PUBLICATIES", "0"))     # 0 = per datum
+MAX_AANTAL = int(os.environ.get("TENDERNED_MAX", "600"))    # veiligheidslimiet
+PAGINA = 100
 TIMEOUT = 30          # seconden per verzoek
 POGINGEN = 3          # aantal pogingen bij tijdelijke fouten
 PAUZE = 0.3           # seconden tussen publicaties (vriendelijk voor de server)
@@ -243,17 +250,45 @@ def verwerk(item):
 # ---------------------------------------------------------------------------
 # Hoofdprogramma
 # ---------------------------------------------------------------------------
-def main():
-    log.info("Start: %s publicaties ophalen van TenderNed", AANTAL)
+def lijst_ophalen():
+    """Haal de lijst op: een vast aantal, of alles sinds DAGEN_TERUG dagen."""
+    if AANTAL > 0:
+        log.info("Start: laatste %s publicaties ophalen van TenderNed", AANTAL)
+        lijst = ophalen_json(f"{API}/publicaties?page=0&size={min(AANTAL, 100)}")
+        if not isinstance(lijst, dict) or not isinstance(lijst.get("content"), list):
+            return None
+        return lijst["content"]
 
-    lijst = ophalen_json(f"{API}/publicaties?page=0&size={AANTAL}")
-    if not isinstance(lijst, dict) or not isinstance(lijst.get("content"), list):
+    vanaf = (date.today() - timedelta(days=DAGEN_TERUG)).isoformat()
+    log.info("Start: TenderNed-publicaties vanaf %s ophalen", vanaf)
+    items, pagina = [], 0
+    while len(items) < MAX_AANTAL:
+        lijst = ophalen_json(f"{API}/publicaties?page={pagina}&size={PAGINA}")
+        if not isinstance(lijst, dict) or not isinstance(lijst.get("content"), list):
+            return items or None
+        inhoud = [i for i in lijst["content"] if isinstance(i, dict)]
+        nieuw = [i for i in inhoud if str(i.get("publicatieDatum", ""))[:10] >= vanaf]
+        items.extend(nieuw)
+        log.info("Pagina %s: %s van %s publicaties vallen in de periode",
+                 pagina, len(nieuw), len(inhoud))
+        # Stoppen zodra we oudere publicaties tegenkomen, of als dit de laatste pagina is
+        if len(nieuw) < len(inhoud) or lijst.get("last") or not inhoud:
+            break
+        pagina += 1
+    if len(items) >= MAX_AANTAL:
+        log.warning("Veiligheidslimiet van %s bereikt; verhoog TENDERNED_MAX indien nodig.", MAX_AANTAL)
+    return items[:MAX_AANTAL]
+
+
+def main():
+    items = lijst_ophalen()
+    if items is None:
         log.error("Geen publicatielijst ontvangen. Is het endpoint gewijzigd of onbereikbaar?")
         return 1
-
-    items = lijst["content"]
-    log.info("Lijst ontvangen: %s publicaties (totaal beschikbaar: %s)",
-             len(items), lijst.get("totalElements", "?"))
+    log.info("Lijst ontvangen: %s publicaties", len(items))
+    if not items:
+        log.warning("Geen nieuwe publicaties in deze periode (dat kan, bv. in het weekend).")
+        return 0
 
     rijen, ruw = [], []
     for item in items:

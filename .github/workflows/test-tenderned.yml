@@ -3,20 +3,29 @@ name: Aanbestedingen ophalen
 on:
   workflow_dispatch:
     inputs:
-      aantal:
-        description: "TenderNed: aantal publicaties (1-100)"
-        default: "10"
       dagen_terug:
-        description: "TED: publicaties van de laatste X dagen"
+        description: "Publicaties van de laatste X dagen ophalen"
         default: "1"
   schedule:
     # Elke dag om 05:47 UTC (= 06:47 in België in de winter, 07:47 in de zomer)
     - cron: "47 5 * * *"
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: aanbestedingen
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://bistjn.github.io/aanbestedingen-test-cas
+
 jobs:
   ophalen:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +35,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Gegevens van vorige dagen ophalen (van de live pagina)
+        run: |
+          mkdir -p data
+          if curl -fsSL "$SITE_URL/data/aanbestedingen.json" -o data/aanbestedingen.json; then
+            echo "Eerdere gegevens opgehaald."
+          else
+            echo "Nog geen eerdere gegevens (eerste run?). We beginnen opnieuw."
+            rm -f data/aanbestedingen.json
+          fi
+
       - name: TenderNed (Nederland)
         id: tenderned
         continue-on-error: true   # een fout bij TenderNed mag TED niet tegenhouden
         env:
-          AANTAL_PUBLICATIES: ${{ github.event.inputs.aantal || '10' }}
+          TENDERNED_DAGEN_TERUG: ${{ github.event.inputs.dagen_terug || '1' }}
         run: python tenderned.py
 
       - name: TED (Europa - Belgie en Nederland)
@@ -40,12 +59,29 @@ jobs:
           TED_DAGEN_TERUG: ${{ github.event.inputs.dagen_terug || '1' }}
         run: python ted.py
 
+      - name: Overzicht maken
+        id: overzicht
+        run: python overzicht.py
+
+      - name: Website klaarzetten
+        run: |
+          mkdir -p site/data
+          cp overzicht.html site/index.html
+          cp data/aanbestedingen.json site/data/aanbestedingen.json
+
+      - name: Website uploaden voor GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
       - name: Resultaten beschikbaar maken
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: aanbestedingen-${{ github.run_number }}
           path: |
+            overzicht.html
+            data/aanbestedingen.json
             *.csv
             *.json
             *.log
@@ -56,3 +92,17 @@ jobs:
         run: |
           echo "TenderNed: ${{ steps.tenderned.outcome }} | TED: ${{ steps.ted.outcome }}"
           exit 1
+
+  publiceren:
+    # Alleen vanaf main publiceren; testbranches maken wel de pagina, maar zetten ze niet online
+    # !cancelled(): ook publiceren als één bron faalde (de andere bron is dan wel bijgewerkt)
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    needs: ophalen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publiceren op GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
