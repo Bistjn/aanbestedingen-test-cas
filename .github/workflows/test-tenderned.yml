@@ -1,0 +1,26 @@
+
+name: Test TenderNed
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ophalen:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python instellen
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Aanbestedingen ophalen
+        run: python tenderned.py
+
+      - name: CSV beschikbaar maken
+        uses: actions/upload-artifact@v4
+        with:
+          name: aanbestedingen-nederland
+          path: aanbestedingen_nederland.csv
