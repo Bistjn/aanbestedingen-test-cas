@@ -82,8 +82,15 @@ def bevat(tekst, term):
     return re.search(r"(?<![a-z0-9à-ÿ])" + term + staart, tekst) is not None
 
 
+PROCEDURE_RUIS = re.compile(r"\b(markt ?consultatie|marktverkenning|consultation du march[ée]|europese aanbesteding|"
+                            r"aanbesteding|heraanbesteding|raamovereenkomst|accord-cadre|march[ée] public)\b", re.I)
+
+
 def aanbestedingstekst(a):
-    return f"{a.get('titel', '')}. {a.get('omschrijving', '')}"[:2000]
+    """Tekst voor het taalmodel, zonder woorden die alleen de procedure beschrijven."""
+    titel = re.sub(r"^(België|Nederland|Belgique|Pays-Bas)\s+[–-]\s+", "", a.get("titel", ""))
+    tekst = f"{titel}. {a.get('omschrijving', '')}"
+    return PROCEDURE_RUIS.sub(" ", tekst)[:2000]
 
 
 # ---------------------------------------------------------------------------
@@ -231,15 +238,18 @@ def score_inhoud(aanbestedingen, profiel):
     # Klantopdracht: wat lijkt op een directe match of valse vriend telt niet als klant
     voor_klant = onderdeel_scoren(aanbestedingen, f"{profiel['id']}:klant:{versie}",
                                   klant.get("facetten"), valse + direct_teksten,
-                                  klant.get("trefwoorden"), klant.get("cpv_groepen")) if klant else {}
+                                  klant.get("trefwoorden"), klant.get("cpv_groepen"),
+                                  profiel.get("zorgcontext")) if klant else {}
 
     for a in aanbestedingen:
         d_score, d_redenen = direct[a["id"]]
         k_score, k_redenen = voor_klant.get(a["id"], (0, []))
-        if d_score >= DREMPEL:
+        if d_score >= DREMPEL and d_score >= k_score:
             soort = "direct"
         elif k_score >= DREMPEL:
             soort = "klant"
+        elif d_score >= DREMPEL:
+            soort = "direct"
         else:
             soort = ""
         a.setdefault("matches", {})[profiel["id"]] = {

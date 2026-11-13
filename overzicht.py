@@ -283,7 +283,7 @@ function gefilterd(){
     r.forEach(a=>{
       const m=(a.matches||{})[p.id]||{score:0,redenen:[]}, d=m.score||0, k=m.klant_score||0;
       // Directe match gaat voor; anders klantopdracht; zo krijgt elke opdracht één label
-      if (soort!=='klant' && d>=Math.max(min,1)) { a._soort='direct'; a._score=d; a._redenen=m.redenen||[]; }
+      if (soort!=='klant' && d>=Math.max(min,1) && (soort==='direct' || !p.klant || d>=k)) { a._soort='direct'; a._score=d; a._redenen=m.redenen||[]; }
       else if (soort!=='direct' && p.klant && k>=Math.max(min,1)) { a._soort='klant'; a._score=k; a._redenen=m.klant_redenen||[]; }
       else { a._soort=''; a._score=0; a._redenen=[]; }
     });
