@@ -1,12 +1,16 @@
-
 name: Test TenderNed
 
 on:
   workflow_dispatch:
+    inputs:
+      aantal:
+        description: "Aantal publicaties (1-100)"
+        default: "10"
 
 jobs:
   ophalen:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -17,10 +21,17 @@ jobs:
           python-version: "3.12"
 
       - name: Aanbestedingen ophalen
+        env:
+          AANTAL_PUBLICATIES: ${{ github.event.inputs.aantal || '10' }}
         run: python tenderned.py
 
-      - name: CSV beschikbaar maken
+      - name: Resultaten beschikbaar maken
+        if: always()   # ook uploaden als het script faalt, zodat je de log kunt bekijken
         uses: actions/upload-artifact@v4
         with:
           name: aanbestedingen-nederland
-          path: aanbestedingen_nederland.csv
+          path: |
+            aanbestedingen_nederland.csv
+            aanbestedingen_nederland.json
+            tenderned.log
+          if-no-files-found: warn
